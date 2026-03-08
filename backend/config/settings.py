@@ -4,7 +4,7 @@ import os
 
 class Settings(BaseSettings):
     # RTSP Camera Configuration
-    RTSP_URL: str = "rtsp://admin:admin123@192.168.1.2:554/Streaming/Channels/201"
+    RTSP_URL: str = "your_RTSP_URL"
     RTSP_FORCE_TCP: bool = True
     RTSP_STIMEOUT_MS: int = 3000000
     RTSP_MAX_DELAY_US: int = 500000
