@@ -1,0 +1,26 @@
+# Python venv and caches
+backend/.venv/
+**/__pycache__/
+*.py[cod]
+
+# Node modules
+frontend/node_modules/
+
+# Environment / secrets
+*.env
+backend/.env
+
+# Storage (recorded videos & thumbnails)
+storage/
+backend/storage/
+backend/logs/
+
+# OS / editor files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Model weights (download separately)
+*.pt
+models/

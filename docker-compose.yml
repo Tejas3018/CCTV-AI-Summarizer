@@ -1,0 +1,67 @@
+version: '3.8'
+
+services:
+  # MongoDB Database
+  mongodb:
+    image: mongo:latest
+    container_name: cctv_mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    environment:
+      - MONGO_INITDB_DATABASE=cctv_ai
+
+  # Backend API
+  backend:
+    build: ./backend
+    container_name: cctv_backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+      - ./storage:/app/storage
+    environment:
+      - MONGODB_URL=mongodb://mongodb:27017
+      - RTSP_URL=${RTSP_URL}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    depends_on:
+      - mongodb
+    command: uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload
+
+  # Event Processor Service
+  event_processor:
+    build: ./backend
+    container_name: cctv_event_processor
+    restart: unless-stopped
+    volumes:
+      - ./backend:/app
+      - ./storage:/app/storage
+    environment:
+      - MONGODB_URL=mongodb://mongodb:27017
+      - RTSP_URL=${RTSP_URL}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    depends_on:
+      - mongodb
+    command: python -m services.event_processor
+
+  # Frontend
+  frontend:
+    build: ./frontend
+    container_name: cctv_frontend
+    restart: unless-stopped
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - VITE_API_URL=http://localhost:8000
+    depends_on:
+      - backend
+    command: npm run dev -- --host
+
+volumes:
+  mongodb_data:
