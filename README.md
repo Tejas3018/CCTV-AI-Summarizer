@@ -109,12 +109,12 @@ Create `backend/.env` file:
 
 ```env
 # RTSP Camera Configuration
-RTSP_URL=rtsp://admin:admin123@192.168.1.3:554/Streaming/Channels/201
+RTSP_URL=YOUR RTSP URL
 CAMERA_NAME=Home_Camera
 
 # MongoDB
-MONGODB_URL=mongodb://localhost:27017
-DATABASE_NAME=cctv_ai
+MONGODB_URL=
+DATABASE_NAME=
 
 # OpenAI
 OPENAI_API_KEY=your_openai_api_key_here
@@ -133,25 +133,15 @@ API_HOST=0.0.0.0
 API_PORT=8000
 ```
 
-### 5. Setup MongoDB
 
-**Option A: Using Docker**
-```bash
-docker run -d -p 27017:27017 --name mongodb mongo:latest
-```
-
-**Option B: Local Installation**
-- Download from: https://www.mongodb.com/try/download/community
-- Install and start the service
-
-### 6. Install Frontend Dependencies
+### 5. Install Frontend Dependencies
 
 ```bash
 cd frontend
 npm install
 ```
 
-### 7. Create Storage Directories
+### 6. Create Storage Directories
 
 ```bash
 mkdir -p storage/clips storage/thumbnails
@@ -159,26 +149,15 @@ mkdir -p storage/clips storage/thumbnails
 
 ## Running the Application
 
-### Option 1: Using Docker Compose (Recommended)
-
+**Terminal 1 - Backend Services:**
 ```bash
-docker-compose up -d
+cd backend
+python -m api.main
 ```
-
-### Option 2: Manual Start
-
-**Terminal 1 - MongoDB (if not using Docker):**
-```bash
-mongod
-```
-
 **Terminal 2 - Backend Services:**
 ```bash
 cd backend
-python -m services.frame_capture &
-python -m services.event_processor &
-python -m services.summarizer &
-python -m api.main
+python -m services.event_processor 
 ```
 
 **Terminal 3 - Frontend:**
@@ -213,240 +192,3 @@ npm run dev
 - Click on events to view clips
 - Filter by detection type (person, car, etc.)
 
-## RTSP Camera Connection
-
-### Your Camera Configuration
-```
-URL: rtsp://admin:admin123@192.168.1.3:554/Streaming/Channels/201
-Username: admin
-Password: admin123
-IP: 192.168.1.3
-Port: 554
-Stream Path: /Streaming/Channels/201
-```
-
-### Testing RTSP Connection
-
-```bash
-# Using FFmpeg
-ffmpeg -rtsp_transport tcp -i rtsp://admin:admin123@192.168.1.3:554/Streaming/Channels/201 -frames:v 1 test.jpg
-
-# Using VLC
-vlc rtsp://admin:admin123@192.168.1.3:554/Streaming/Channels/201
-```
-
-### Troubleshooting RTSP
-
-1. **Connection Timeout**
-   - Check camera is on same network
-   - Verify IP address: `ping 192.168.1.3`
-   - Check firewall settings
-
-2. **Authentication Failed**
-   - Verify username/password in camera settings
-   - Try accessing via browser: `http://192.168.1.3`
-
-3. **Stream Not Available**
-   - Check stream path in camera settings
-   - Try main stream: `/Streaming/Channels/101`
-   - Try sub stream: `/Streaming/Channels/201`
-
-## Database Schema
-
-### Events Collection
-```javascript
-{
-  _id: ObjectId,
-  timestamp: DateTime,
-  camera_id: String,
-  detection_type: String,  // "person", "car", "dog", etc.
-  confidence: Float,
-  bounding_box: {
-    x: Int,
-    y: Int,
-    width: Int,
-    height: Int
-  },
-  clip_path: String,
-  thumbnail_path: String,
-  metadata: {
-    duration: Float,
-    frame_count: Int
-  }
-}
-```
-
-### Daily Summaries Collection
-```javascript
-{
-  _id: ObjectId,
-  date: Date,
-  summary: String,
-  events_count: Int,
-  key_events: Array,
-  statistics: {
-    total_detections: Int,
-    by_type: Object,
-    peak_hours: Array
-  }
-}
-```
-
-## Advanced Configuration
-
-### GPU Acceleration (CUDA)
-
-Install CUDA-enabled PyTorch:
-```bash
-pip install torch torchvision --index-url https://download.pytorch.org/whl/cu118
-```
-
-Update `backend/services/detection.py`:
-```python
-device = 'cuda' if torch.cuda.is_available() else 'cpu'
-```
-
-### Multiple Cameras
-
-Add cameras in `backend/config/settings.py`:
-```python
-CAMERAS = [
-    {
-        "id": "camera_1",
-        "name": "Front Door",
-        "rtsp_url": "rtsp://admin:admin123@192.168.1.3:554/Streaming/Channels/201"
-    },
-    {
-        "id": "camera_2",
-        "name": "Backyard",
-        "rtsp_url": "rtsp://admin:admin123@192.168.1.4:554/Streaming/Channels/201"
-    }
-]
-```
-
-### Custom Detection Classes
-
-Modify `backend/services/detection.py`:
-```python
-# Filter specific classes
-DETECTION_CLASSES = [0, 2, 5, 7]  # person, car, bus, truck
-```
-
-## API Endpoints
-
-### Events
-- `GET /api/events` - List all events
-- `GET /api/events/{event_id}` - Get specific event
-- `GET /api/events/today` - Today's events
-- `GET /api/events/range?start=...&end=...` - Events in time range
-
-### Summaries
-- `GET /api/summary/today` - Today's summary
-- `POST /api/summary/generate` - Generate new summary
-- `GET /api/summary/date/{date}` - Summary for specific date
-
-### Query
-- `POST /api/query` - Natural language query
-  ```json
-  {
-    "query": "Show me people detected after 5 PM",
-    "date": "2024-02-15"
-  }
-  ```
-
-### Clips
-- `GET /api/clips/{event_id}` - Stream video clip
-- `GET /api/thumbnails/{event_id}` - Get thumbnail
-
-## Performance Optimization
-
-### 1. Frame Skip
-Process every Nth frame to reduce CPU usage:
-```env
-FRAME_SKIP=5  # Process every 5th frame (6 FPS from 30 FPS stream)
-```
-
-### 2. Resolution
-Lower resolution for faster processing:
-```python
-# In frame_capture.py
-cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
-cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
-```
-
-### 3. Detection Confidence
-Higher threshold = fewer false positives:
-```env
-DETECTION_CONFIDENCE=0.6
-```
-
-## Troubleshooting
-
-### High CPU Usage
-- Increase `FRAME_SKIP`
-- Use GPU acceleration
-- Lower camera resolution
-
-### Missing Events
-- Lower `DETECTION_CONFIDENCE`
-- Decrease `FRAME_SKIP`
-- Check camera angle and lighting
-
-### Storage Issues
-- Implement clip retention policy
-- Compress old clips
-- Use external storage
-
-## Maintenance
-
-### Daily Tasks
-- Check disk space: `df -h`
-- Monitor logs: `tail -f backend/logs/app.log`
-
-### Weekly Tasks
-- Review and delete old clips
-- Check MongoDB size: `db.stats()`
-- Update YOLO models if available
-
-### Backup
-```bash
-# Backup MongoDB
-mongodump --db cctv_ai --out backup/
-
-# Backup clips
-tar -czf clips_backup.tar.gz storage/clips/
-```
-
-## Security Recommendations
-
-1. **Change Default Credentials**
-   - Update camera password
-   - Use strong admin passwords
-
-2. **Network Security**
-   - Use VPN for remote access
-   - Isolate camera on separate VLAN
-   - Enable HTTPS for web interface
-
-3. **API Security**
-   - Implement authentication (JWT)
-   - Add rate limiting
-   - Use environment variables for secrets
-
-## License
-
-MIT License - See LICENSE file
-
-## Support
-
-For issues or questions:
-- Check documentation
-- Review logs in `backend/logs/`
-- Open GitHub issue
-
-## Credits
-
-- YOLOv8 by Ultralytics
-- OpenAI GPT API
-- FastAPI Framework
-- React + Vite
